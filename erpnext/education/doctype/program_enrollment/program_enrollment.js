@@ -1,7 +1,6 @@
 // Copyright (c) 2016, Frappe and contributors
 // For license information, please see license.txt
 
-
 frappe.ui.form.on("Program Enrollment", {
 	setup: function(frm) {
 		frm.add_fetch('fee_structure', 'total_amount', 'amount');
@@ -64,6 +63,7 @@ frappe.ui.form.on("Program Enrollment", {
 		}
 	},
 
+
 	student_category: function() {
 		frappe.ui.form.trigger("Program Enrollment", "program");
 	},
@@ -79,5 +79,83 @@ frappe.ui.form.on("Program Enrollment", {
 				}
 			}
 		})
+	}
+
+});
+
+
+
+frappe.ui.form.on("Program Enrollment", {
+	sinvoice: function(frm)
+	{
+		if( cur_frm.doc.sinvoice == 0)
+		{
+		cur_frm.set_value("invoice" , undefined);
+		cur_frm.set_value("_party" , undefined);
+		cur_frm.set_df_property("invoice", "hidden", 1);
+		cur_frm.set_df_property("invoice", "reqd", 0);
+		cur_frm.set_df_property("_party", "hidden", 1);
+		cur_frm.set_df_property("_party", "reqd", 0);
+		cur_frm.set_df_property("generate", "hidden", 1);
+		}
+
+		else{
+		cur_frm.set_df_property("invoice", "hidden", 0);
+		cur_frm.set_df_property("invoice", "reqd", 1);
+		cur_frm.set_df_property("_party", "hidden", 0);
+		cur_frm.set_df_property("_party", "reqd", 1);
+		}
+	}
+
+});
+
+
+frappe.ui.form.on("Program Enrollment", {
+  	invoice: function(frm) {	
+	if(cur_frm.doc.invoice != undefined){	
+		cur_frm.set_df_property("generate", "hidden", 1);
+		}
+
+	else cur_frm.set_df_property("generate", "hidden", 0);
+	}
+});
+
+
+frappe.ui.form.on("Program Enrollment", {
+  	_party: function(frm) {	
+		cur_frm.set_value("invoice" , undefined);
+		cur_frm.set_df_property("generate", "hidden", 0);
+		}
+});
+
+
+frappe.ui.form.on("Program Enrollment", {
+  	
+  	generate: function(frm) {
+
+  		if(cur_frm.doc.sinvoice == 0) return;
+  		if(cur_frm.doc.courses == undefined || cur_frm.doc.student == undefined || cur_frm.doc._party == undefined)
+  			{
+  				frappe.msgprint("Form incomplete. Kindly fill the mandatory fields and try again."); return;
+  			}
+  		var crs = [], fee = [], i = 0;
+		cur_frm.doc.courses.forEach(function(rows){ crs[i] = rows.course; i++; });
+		i = 0;cur_frm.doc.fees.forEach(function(rows){ fee[i] = rows.fee_structure; i++; });
+  		frappe.call({
+            method: "erpnext.education.doctype.program_enrollment.program_enrollment.make_inv",
+            args:{
+                    'customer': frm.doc._party,
+                    'customer_name': frm.doc.student_name,
+                    'due_date': cur_frm.doc.enrollment_date,
+                    'courses': crs,
+                    'fees':fee,
+                   },
+            async: false,
+            callback: function(r)
+            {
+            	cur_frm.set_value("invoice",r.message.name);
+            	cur_frm.set_df_property("generate", "hidden", 1); 
+            }
+        });
 	}
 });
